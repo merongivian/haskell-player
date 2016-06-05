@@ -28,7 +28,7 @@ import qualified Graphics.Vty as V
 import Lens.Micro ((^.))
 import System.Directory (doesDirectoryExist, getDirectoryContents)
 import System.Environment (getEnv)
-import System.FilePath ((</>))
+import System.FilePath ((</>), takeExtension)
 import System.Process (ProcessHandle)
 
 import Sound.Player.AudioInfo (SongInfo(SongInfo), fetchSongInfo)
@@ -197,7 +197,7 @@ stopAndPlayDelta delta app@(PlayerApp l _ _ (Just (Playback playPos _ _ _ _))) =
 initialState :: IO PlayerApp
 initialState = do
   chan <- newChan
-  paths <- listMusicDirectory
+  paths <- listMusicDirectory >>= filterAudioFiles
   let songs = map (\p -> Song Nothing p Stop) paths
       listWidget = L.list (Name "list") (Vec.fromList songs) 1
   return $ PlayerApp listWidget Stop chan Nothing
@@ -222,7 +222,6 @@ theApp =
         }
 
 
--- TODO: return only audio files
 -- | Returns the list of files in the default music directory.
 listMusicDirectory :: IO [FilePath]
 listMusicDirectory = do
@@ -241,6 +240,12 @@ listMusicDirectory = do
           return $ p:files
     visible = not . isPrefixOf "."
     stripMusicDirectory musicDir = fromMaybe musicDir . stripPrefix musicDir
+
+
+filterAudioFiles :: [FilePath] -> IO [FilePath]
+filterAudioFiles files = return $ filter hasAudioExtension files
+  where hasAudioExtension file = (takeExtension file) `elem` audioExtensions
+        audioExtensions = [".mp3", ".wav", ".m4a"]
 
 
 -- | The default music directory is /$HOME\/Music/.
